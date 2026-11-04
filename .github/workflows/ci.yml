@@ -28,6 +28,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Run tests
         run: python3 tests/test_ninebot_skill.py
+      - name: Guard the public sample picture against real data
+        # The README picture is rendered from a fabricated fixture and
+        # published. This test fails if the fixture drifts toward real
+        # values, or if the generator starts reading the live snapshot
+        # and the local ride-record cache.
+        run: python3 tests/test_sample_board.py
       - name: Byte-compare against the official CLI binary
         # The official `ninecli` wheel ships an opaque Go binary, so it is
         # NOT installed on CI (no third-party binary in the trust chain, and

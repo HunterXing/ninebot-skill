@@ -14,6 +14,12 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 
+# The week histogram falls back to the local ride-record cache whenever
+# the snapshot carries no records. Point it at nothing so the tests are
+# hermetic: otherwise they mix the machine's real rides into their
+# assertions, and fail or pass depending on who last rode the vehicle.
+os.environ["NINEBOT_TRAVEL_CACHE"] = "/nonexistent/ninebot_travel_months.json"
+
 import ninebot_card_image as board  # noqa: E402
 
 

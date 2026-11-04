@@ -5,3 +5,4 @@ __pycache__/
 config.json
 session.json
 *.bak
+.nonexistent-travel-cache.json

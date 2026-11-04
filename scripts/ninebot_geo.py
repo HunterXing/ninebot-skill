@@ -41,7 +41,8 @@ CACHE_FILE = os.path.expanduser(
 CACHE_TTL = int(os.environ.get("NINEBOT_GEO_TTL", "21600"))  # 6 小时
 TIMEOUT = int(os.environ.get("NINEBOT_GEO_TIMEOUT", "12"))
 
-# 合肥一带，用于坐标偏移判定
+# 全国经纬度范围，用于判定一个坐标是否落在中国境内
+# （GCJ-02 ⇄ WGS-84 转换的标准做法；与使用者的位置无关）
 _CHINA_BOUNDS = (72.004, 137.8347, 0.8293, 55.8271)
 
 

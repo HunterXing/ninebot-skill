@@ -251,8 +251,9 @@ class TestNormalisation(unittest.TestCase):
         self.assertEqual(nq.normalize_charging("weird"), "unknown")
 
     def test_deep_get(self):
-        data = {"data": {"locationInfo": {"locationDesc": "合肥"}}}
-        self.assertEqual(nq.deep_get(data, "data.locationInfo.locationDesc"), "合肥")
+        data = {"data": {"locationInfo": {"locationDesc": "某市某区某路"}}}
+        self.assertEqual(nq.deep_get(data, "data.locationInfo.locationDesc"),
+                         "某市某区某路")
         self.assertIsNone(nq.deep_get(data, "data.missing.key"))
         self.assertIsNone(nq.deep_get(None, "a.b"))
 
@@ -681,7 +682,10 @@ class GeoTest(unittest.TestCase):
         import os
         repo = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
         # Concatenated so this file does not trip its own scan.
-        banned = ("西子" + "曼城", "望江" + "西路", "高新" + "技术产业开发区")
+        # The city name is in here too: a fixture that says where the
+        # owner lives identifies the owner just as well as a street does.
+        banned = ("西子" + "曼城", "望江" + "西路", "高新" + "技术产业开发区",
+                  "合" + "肥")
         hits = []
         for path in glob.glob(os.path.join(repo, "**", "*"), recursive=True):
             if not os.path.isfile(path):

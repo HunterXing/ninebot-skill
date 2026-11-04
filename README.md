@@ -26,6 +26,24 @@
 位置 某市某区某路某号
 ```
 
+## 状态看板
+
+除了文字输出，`scripts/ninebot_card_image.py` 能把车况渲染成**一张状态图**：中间是九号官方车型图，四周环绕电量 / 里程 / 天气 / 续航 / 状态 / 位置六张状态卡，车图下方是近 7 日骑行柱状图。适合每天定时推送或随手查一眼。
+
+![九号电自 Fz1 60 状态看板](docs/images/board-sample.png)
+
+> ⚠️ 上图是**示例数据**：地址、里程、骑行日期全部虚构，由 `scripts/make_sample_board.py`
+> 用占位数据渲染（公开仓库不落真实位置与骑行记录）。实际使用中位置会反查成中文地址，
+> 数值来自你的实车。
+
+```bash
+python3 scripts/ninebot_card_image.py     # 从本地快照渲染，stdout 一行 MEDIA:<绝对路径>
+python3 scripts/make_sample_board.py       # 重新生成上面那张示例图
+```
+
+看板本身零网络请求——数据全部来自本地快照（`ninebot_snapshot.py` 采集），
+渲染过程不碰九号接口。天气卡、地点、状态机的口径见下方各节。
+
 ## 为什么是改造版
 
 九号 2026-03 发布了官方 `ninebot-device-skill`（ClawHub，1.4k star），但它是 **OpenClaw 生态**的 skill 包——Hermes 装不了；而且只支持一种认证：需要报名 OpenClaw **内测**拿 `NINEBOT_DEVICESERVICE_KEY`。
