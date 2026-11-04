@@ -505,12 +505,14 @@ body{{
 .chips{{display:flex;flex-wrap:wrap;gap:6px 12px}}
 .chip{{font-size:17px;font-weight:600;white-space:nowrap}}
 
-/* Behaviour tips — only present when there is something to say. */
-.tips{{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px 10px;
-  margin-top:14px}}
-.tip{{font-size:16px;color:{ACCENT};background:rgba(255,196,107,.11);
-  border:1px solid rgba(255,196,107,.3);border-radius:999px;
-  padding:6px 15px;font-weight:600}}
+/* Behaviour tips — only present when there is something to say.
+   A full-width band, not a floating pill: the text is longer than one
+   column, and a pill that overruns the column breaks the grid. */
+.tips{{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;
+  margin-top:15px}}
+.tip{{font-size:17px;color:#ffd79a;background:rgba(255,196,107,.10);
+  border:1px solid rgba(255,196,107,.28);border-radius:14px;
+  padding:11px 18px;font-weight:600;line-height:1.45}}
 </style></head><body>
 <div class="head">
   <div>
