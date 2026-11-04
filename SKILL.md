@@ -222,6 +222,7 @@ mcp_servers:
 
 | 现象 | 原因与解法 |
 |---|---|
+| 高德回 `INVALID_USER_SCODE` / `10001` | Key 的平台类型选错了——必须是**「Web 服务」**，不是「Web端 (JS API)」。控制台创建后不能改，只能重新申请；申请时一并拿安全密钥 jscode |
 | `90051 sign is null` | 请求没带 Passport 签名头 —— 本 skill 自带 `ninebot_sign.py`，别手写 curl |
 | `ERROR: 快照不可用且刷新失败` | 没有可用旧快照时的硬失败：会话失效（重跑 `ninebot_login.py`）或网络被代理掐断。有旧快照时会降级并标 `⚠️ 数据来自…` |
 | `connection reset by peer` | 本机代理（mihomo/clash）掐了连接。九号域名通常不在 `no_proxy` 白名单里 —— 本 skill 已在脚本内 `unset` 代理变量 |
