@@ -321,7 +321,8 @@ def _mileage_card(snap: Dict[str, Any]) -> str:
     allm = mileage.get("all") or {}
     rows = [f"本周 {_fmt(week.get('km'), ' km', 1)}",
             f"本月 {_fmt(month.get('km'), ' km', 1)}"]
-    if allm.get("odometerAvailable"):
+    # The flag sits at the top of the mileage block, not inside "all".
+    if mileage.get("odometerAvailable"):
         rows.insert(0, "累计（仪表盘）")
     else:
         # The odometer field is null on a shared account. The cumulative
@@ -556,7 +557,12 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.refresh:
-        snap = snapstore.refresh()
+        # max_age=0 means "always try the API" — but a failing refresh
+        # must not throw away the board: ensure() falls back to the last
+        # snapshot and marks it stale, exactly like the text path.
+        snap, _refreshed, error = snapstore.ensure(0)
+        if error:
+            print(f"WARN: 快照刷新失败，使用旧数据（{error}）", file=sys.stderr)
     else:
         snap, _refreshed, error = snapstore.ensure(args.max_age)
         if error:

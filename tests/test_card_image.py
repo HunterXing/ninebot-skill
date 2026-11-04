@@ -42,7 +42,8 @@ def snapshot(**overrides):
         "mileage": {"day": {"km": 0, "times": 0},
                     "week": {"km": 2.4, "times": 7},
                     "month": {"km": 8.6, "times": 10},
-                    "all": {"km": 15.4, "times": 13, "odometerAvailable": False}},
+                    "all": {"km": 15.4, "times": 13},
+                    "odometerAvailable": False},
     }
     snap.update(overrides)
     return snap
@@ -130,6 +131,15 @@ class TestBoard(unittest.TestCase):
         body = body_of(snapshot())
         self.assertIn("累计骑行", body)
         self.assertNotIn("累计（仪表盘）", body)
+
+    def test_odometer_flag_is_read_from_the_mileage_top_level(self):
+        """It lives beside "all", not inside it — a wrong nesting level
+        silently always reports "no odometer"."""
+        snap = snapshot()
+        snap["mileage"]["odometerAvailable"] = True
+        body = body_of(snap)
+        self.assertIn("累计（仪表盘）", body)
+        self.assertNotIn("累计骑行", body)
 
     def test_week_bars_summarise_the_days(self):
         snap = snapshot()

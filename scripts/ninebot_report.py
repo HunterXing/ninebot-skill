@@ -397,6 +397,11 @@ def collect_snapshot() -> Dict[str, Any]:
             cfg, token, sn, travel.get("month") or "")
     except Exception:  # noqa: BLE001 - mileage is a bonus, not a dependency
         mileage = {}
+    # The odometer flag has to reflect the account's real access, not a
+    # constant: `total_mileage` is null on a shared account, so the board
+    # says "累计骑行" instead of "仪表盘".
+    if isinstance(mileage, dict):
+        mileage["odometerAvailable"] = dev.get("totalMileage") is not None
 
     geo = None
     try:

@@ -403,6 +403,10 @@ def account_list_devices(cfg: Dict[str, Any], access_token: str, lang: str,
                 row["imgUrl"] = str(
                     item.get("img_url") or item.get("v6_light_img_url") or "")
                 row["color"] = str(item.get("color") or "")
+                # The odometer reading, when the account is allowed one.
+                # Null on a shared account — that is a permission edge,
+                # not a missing feature.
+                row["totalMileage"] = item.get("total_mileage")
             out.append(row)
     return out
 
