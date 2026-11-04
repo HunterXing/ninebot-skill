@@ -358,7 +358,15 @@ def _account_env(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return {"token": token, "uid": uid}
 
 
-def account_list_devices(cfg: Dict[str, Any], access_token: str, lang: str) -> List[Dict[str, Any]]:
+def account_list_devices(cfg: Dict[str, Any], access_token: str, lang: str,
+                         include_media: bool = False) -> List[Dict[str, Any]]:
+    """List the vehicles on the account.
+
+    `include_media` adds the official model picture URL and the colour
+    name for the render board. It is opt-in: the MCP surface keeps
+    projecting to sn + name only, so no agent transcript ever carries
+    asset URLs.
+    """
     creds = _account_env(cfg)
     env = client.my_vehicle(creds["token"], creds["uid"])
     code = env.get("code")
@@ -387,7 +395,15 @@ def account_list_devices(cfg: Dict[str, Any], access_token: str, lang: str) -> L
                 or item.get("name") or item.get("nick")
                 or item.get("nickname") or item.get("alias") or item.get("title"))
         if sn:
-            out.append({"sn": str(sn), "name": str(name) if name else ""})
+            row: Dict[str, Any] = {"sn": str(sn), "name": str(name) if name else ""}
+            if include_media:
+                # The official model picture for this exact trim, plus the
+                # colour name. Both live on the vehicle record; the signed
+                # URL must be read at runtime, never hardcoded.
+                row["imgUrl"] = str(
+                    item.get("img_url") or item.get("v6_light_img_url") or "")
+                row["color"] = str(item.get("color") or "")
+            out.append(row)
     return out
 
 

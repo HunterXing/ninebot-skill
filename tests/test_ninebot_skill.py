@@ -669,6 +669,39 @@ class GeoTest(unittest.TestCase):
         self.assertEqual(hits, [], "real coordinates leaked into the repo: "
                                    + ", ".join(hits))
 
+    def test_no_real_address_is_committed(self):
+        """Coordinates are only half of it — a place name identifies too.
+
+        The owner's parking spot is a POI, a road and a district. A
+        fixture carrying them reads as "the address this repo was built
+        at", which is exactly what the public repository must not say.
+        Placeholders have to be obvious: 某小区 / 某路 / 某区.
+        """
+        import glob
+        import os
+        repo = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
+        # Concatenated so this file does not trip its own scan.
+        banned = ("西子" + "曼城", "望江" + "西路", "高新" + "技术产业开发区")
+        hits = []
+        for path in glob.glob(os.path.join(repo, "**", "*"), recursive=True):
+            if not os.path.isfile(path):
+                continue
+            if any(part in (".git", "node_modules", "__pycache__", ".venv")
+                   for part in path.split(os.sep)):
+                continue
+            if not path.endswith((".py", ".md", ".sh", ".yml", ".yaml", ".json")):
+                continue
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    body = fh.read()
+            except (OSError, UnicodeDecodeError):
+                continue
+            for token in banned:
+                if token in body:
+                    hits.append(f"{os.path.relpath(path, repo)}: {token}")
+        self.assertEqual(hits, [], "real place names leaked into the repo: "
+                                   + ", ".join(hits))
+
 
 class BusinessTypeTest(unittest.TestCase):
     """`Business-Type` is decided per ENDPOINT, not per gateway.

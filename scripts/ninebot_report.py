@@ -354,13 +354,21 @@ def collect_snapshot() -> Dict[str, Any]:
     if not session:
         raise RuntimeError("九号会话文件缺失或已失效")
     token = session.get("access_token", "")
-    devices = nq.account_list_devices(cfg, token, "zh")
+    devices = nq.account_list_devices(cfg, token, "zh", include_media=True)
     if not devices:
         raise RuntimeError("九号车辆列表为空（session 失效或车辆解绑）")
     dev = devices[0]
     sn = str(dev.get("sn") or "")
+    # The official model picture travels with the snapshot so the board
+    # renderer stays offline — one collector, one network path.
+    device_meta = {"name": "", "sn": sn}
     status = nq.account_device_info(cfg, token, sn)
     status.setdefault("device_name", dev.get("name", ""))
+    device_meta["name"] = str(dev.get("name") or status.get("device_name") or "")
+    if dev.get("imgUrl"):
+        device_meta["imgUrl"] = str(dev["imgUrl"])
+    if dev.get("color"):
+        device_meta["color"] = str(dev["color"])
     # Normalise the raw upstream flags (pwr=1, charging=0) into the
     # words the report prints.
     status["powerStatus"] = nq.normalize_power(status.get("status"))
@@ -410,7 +418,7 @@ def collect_snapshot() -> Dict[str, Any]:
     return {
         "fetched_at": fetched.isoformat(timespec="seconds"),
         "epoch": int(fetched.timestamp()),
-        "device": {"name": status.get("device_name", ""), "sn": sn},
+        "device": device_meta,
         "status": status,
         "battery": battery,
         "geo": geo or {},

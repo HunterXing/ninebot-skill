@@ -61,7 +61,38 @@ bash ~/.hermes/scripts/ninebot_status.sh weather    # 实时 + 今天 + 明天
 bash ~/.hermes/scripts/ninebot_status.sh params     # 全参数 key=value（非固定问题取数）
 bash ~/.hermes/scripts/ninebot_status.sh full       # 完整日报版
 bash ~/.hermes/scripts/ninebot_status.sh status 0   # 强制刷新后再答（0 = 不接受任何陈旧）
+bash ~/.hermes/scripts/ninebot_status_card.sh       # 状态图：中间真车图，四周状态
 ```
+
+### 🖼 状态图（中间是真车，四周是状态）
+
+车况是「一眼看」的东西——电量多少、停在哪、锁没锁，手机上一张图比一段话快。
+`ninebot_card_image.py` 把快照渲染成一张图：中间是九号官方车型图（按本车配色），
+四周六张状态卡（电量 / 续航 / 里程 / 状态 / 位置 / 天气），车图下方是近 7 日骑行柱状图。
+
+```bash
+bash ~/.hermes/scripts/ninebot_status_card.sh             # stdout 一行 MEDIA:<路径>
+bash ~/.hermes/scripts/ninebot_status_card.sh --refresh   # 先强制刷新快照
+```
+
+**车型图从哪来**：`my-vehicle` 接口自带本车配色的官方图（`img_url` / `v6_light_img_url`）。
+它**随快照一起落盘**（`snapshot.json` 的 `device.imgUrl`），渲染时离线取——
+不二次联网，签名 URL 也不会过期后失效。**URL 绝不能写死**（带 `nbchecksignv1` 签名，会轮换）。
+图片缓存在 `~/.hermes/cache/ninebot/model.png`，按 URL 比对决定是否重取。
+
+**版式契约**（改的时候别破坏）：
+- **横向板（1600×1000）**：官方图是 1.5:1 横图，方形板里中间列会变成细长条，
+  车图只能占面板四分之一（实测宽度 78% / 高度 25%）。
+- **九宫格显式定位**：车图 `grid-row:1 / span 3` 占中列全高，其余六张卡
+  用 `grid-column/grid-row` 显式摆位。靠自动排布会留下空角（实测右下两格全空）。
+- **卡片要撑满**：卡片裹在 wrapper 里，wrapper `flex:1`、卡片 `flex:1 1 auto`，
+  否则卡片保持内容高度、所有空白堆在卡下（实测像半空的模板）。
+- **一个数字一个口径**：续航卡三个数（实景 / 标准工况 / 按骑行习惯）必须各自带口径标签；
+  电池温度标「电池」以区别于环境温度；里程在共享账号下写「累计骑行」而不是「里程表」。
+- **缺值印 `—`**，不印 0（上游「不支持」和「真的是 0」长得一样）。
+
+**图片落点必须在媒体白名单目录**（`~/.hermes/cache/images/`），否则投递层会丢掉图片
+却仍报成功（见 `validate_media_delivery_path`）。
 
 **为什么快**：`ninebot_snapshot.py` 把所有可读数据抓一次落成
 `~/.hermes/state/ninebot/snapshot.json`（含 `fetched_at`/`epoch`），
