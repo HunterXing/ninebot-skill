@@ -66,8 +66,15 @@ class TestBoard(unittest.TestCase):
         for expected in ("72%", "51.1 km", "47.2 km", "21.6 km",
                          "15.4 km", "2.4 km", "8.6 km", "某小区",
                          "某路", "某区", "104 m", "雾", "15 °C",
-                         "50.5 V", "温暖金", "TEST0001"):
+                         "50.5 V", "温暖金"):
             self.assertIn(expected, body, f"missing {expected}")
+
+    def test_the_serial_number_is_not_on_the_board(self):
+        """The device serial identifies the vehicle, not its state — the
+        owner asked for it to be left off."""
+        body = body_of(snapshot())
+        self.assertNotIn("TEST0001", body)
+        self.assertNotIn("SN ", body)
 
     def test_missing_figures_print_a_dash_not_zero(self):
         snap = snapshot()
@@ -154,6 +161,32 @@ class TestBoard(unittest.TestCase):
     def test_week_bars_are_empty_without_records(self):
         snap = snapshot(travel={"list": []})
         self.assertEqual("", board._week_bars(snap))
+
+    def test_behaviour_tip_appears_when_the_bike_is_parked_in_rain(self):
+        """The daily report's tips must survive the switch to a picture."""
+        snap = snapshot()
+        snap["status"]["powerStatus"] = "OFF"
+        snap["weather"]["days"][0]["textDay"] = "小雨"
+        body = body_of(snap)
+        self.assertIn("tips", body)
+        self.assertIn("车衣", body)
+
+    def test_no_tip_strip_when_there_is_nothing_to_say(self):
+        snap = snapshot()
+        snap["status"]["powerStatus"] = "ON"
+        snap["weather"]["days"][0]["textDay"] = "阴"
+        self.assertEqual("", board._reminder_strip(snap))
+
+    def test_rain_comes_from_the_forecast_text_not_the_rainfall_number(self):
+        """A weather API reports 0.1 mm on overcast days; the text is the
+        only reliable rain signal."""
+        snap = snapshot()
+        snap["status"]["powerStatus"] = "OFF"
+        snap["weather"]["days"][0]["textDay"] = "阴"
+        snap["weather"]["now"]["precip"] = "0.1"
+        strip = board._reminder_strip(snap)
+        self.assertNotIn("有雨", strip)
+        self.assertNotIn("雨衣", strip)
 
     def test_html_escapes_hostile_values(self):
         snap = snapshot()

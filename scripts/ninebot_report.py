@@ -84,7 +84,7 @@ def _has_precip(precip: Any) -> bool:
         return False
 
 
-def _reminders(status: Dict[str, Any], rainy: bool) -> List[str]:
+def reminders(status: Dict[str, Any], rainy: bool) -> List[str]:
     """The two things worth saying out loud.
 
     Rain matters for the ride; a parked vehicle matters for the seat and
@@ -256,7 +256,7 @@ def render(status: Dict[str, Any],
         lines.append("")
 
     # ---- reminders ------------------------------------------------------
-    tips = _reminders(status, rainy)
+    tips = reminders(status, rainy)
     if tips:
         lines.append("**💡 提醒**")
         for tip in tips:

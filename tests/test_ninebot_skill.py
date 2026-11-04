@@ -847,20 +847,20 @@ class ReportRulesTest(unittest.TestCase):
         self.assertIn("雨衣", out)
 
     def test_parked_vehicle_triggers_the_cover_tip(self):
-        tips = self.rep._reminders({"powerStatus": "OFF"}, rainy=False)
+        tips = self.rep.reminders({"powerStatus": "OFF"}, rainy=False)
         self.assertTrue(any("车衣" in t or "车库" in t for t in tips))
 
     def test_running_vehicle_does_not_trigger_the_cover_tip(self):
-        tips = self.rep._reminders({"powerStatus": "ON"}, rainy=False)
+        tips = self.rep.reminders({"powerStatus": "ON"}, rainy=False)
         self.assertFalse(any("车衣" in t or "车库" in t for t in tips))
 
     def test_parked_and_raining_says_cover_not_raincoat(self):
-        tips = self.rep._reminders({"powerStatus": "OFF"}, rainy=True)
+        tips = self.rep.reminders({"powerStatus": "OFF"}, rainy=True)
         self.assertTrue(any("车衣" in t for t in tips))
         self.assertFalse(any("雨衣" in t for t in tips))
 
     def test_running_and_raining_says_raincoat(self):
-        tips = self.rep._reminders({"powerStatus": "ON"}, rainy=True)
+        tips = self.rep.reminders({"powerStatus": "ON"}, rainy=True)
         self.assertTrue(any("雨衣" in t for t in tips))
 
 

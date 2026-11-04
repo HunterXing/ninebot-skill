@@ -189,6 +189,27 @@ def _week_bars(snap: Dict[str, Any]) -> str:
             f'<div class="bars">{bars}</div></div>')
 
 
+def _reminder_strip(snap: Dict[str, Any]) -> str:
+    """The behaviour tips, if any.
+
+    Wording and rain rule come from the daily report module — one place
+    decides what "parked in the rain" means. The board does not invent
+    its own phrasing, otherwise the two outputs drift apart.
+    """
+    import ninebot_report as report
+    status = snap.get("status") or {}
+    weather = snap.get("weather") or {}
+    days = weather.get("days") or []
+    today = days[0] if days else {}
+    text_today = str(today.get("textDay") or "")
+    rainy = ("雨" in text_today) or ("雪" in text_today)
+    tips = report.reminders(status, rainy)
+    if not tips:
+        return ""
+    items = "".join(f'<span class="tip">{_esc(t)}</span>' for t in tips)
+    return f'<div class="tips">{items}</div>'
+
+
 def _photo_path(snap: Dict[str, Any]) -> Optional[str]:
     """Fetch and cache the official model picture.
 
@@ -382,7 +403,6 @@ def build_html(snap: Dict[str, Any], photo: Optional[str]) -> str:
     device = snap.get("device") or {}
     name = device.get("name") or "九号电动车"
     color = device.get("color") or ""
-    sn = str(device.get("sn") or "")
     stale = ""
     if snap.get("stale"):
         stale = (f'<div class="stale">⚠ 数据来自 '
@@ -484,11 +504,17 @@ body{{
 .bar .off{{background:#34414f}}
 .chips{{display:flex;flex-wrap:wrap;gap:6px 12px}}
 .chip{{font-size:17px;font-weight:600;white-space:nowrap}}
+
+/* Behaviour tips — only present when there is something to say. */
+.tips{{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px 10px;
+  margin-top:14px}}
+.tip{{font-size:16px;color:{ACCENT};background:rgba(255,196,107,.11);
+  border:1px solid rgba(255,196,107,.3);border-radius:999px;
+  padding:6px 15px;font-weight:600}}
 </style></head><body>
 <div class="head">
   <div>
     <div class="title"><span class="tint">🛵</span> {_esc(name)}</div>
-    <div class="subtitle">SN {_esc(sn)}</div>
   </div>
   <div class="stamp">{_esc(_stamp_text(snap))}</div>
 </div>
@@ -506,6 +532,7 @@ body{{
   <div class="c-power">{_power_card(snap)}</div>
   <div class="c-location">{_location_card(snap)}</div>
 </div>
+{_reminder_strip(snap)}
 </body></html>
 """
 
