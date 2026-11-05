@@ -342,16 +342,25 @@ def _mileage_card(snap: Dict[str, Any]) -> str:
     allm = mileage.get("all") or {}
     rows = [f"本周 {_fmt(week.get('km'), ' km', 1)}",
             f"本月 {_fmt(month.get('km'), ' km', 1)}"]
-    # The flag sits at the top of the mileage block, not inside "all".
+    # The native odometer comes from `vehicle-info`. When it is there, it
+    # IS the whole-vehicle figure — no per-vehicle judgement needed — so
+    # label it "里程表". The account-visible cumulative stays a separate
+    # line, because it is a different caliber: it only covers the rides
+    # this account can see.
+    # The flag is the authority (the collection layer decided it); the
+    # value is the number. A flag without a number prints "—", never 0.
     if mileage.get("odometerAvailable"):
-        rows.insert(0, "累计（仪表盘）")
+        odo = mileage.get("odometerKm")
+        headline = f"{float(odo):.1f} km" if odo is not None else "—"
+        rows.insert(0, "里程表")
+        if mileage.get("cumulativeDiffersFromOdo"):
+            rows.append(f"累计骑行 {_fmt(allm.get('km'), ' km', 1)}")
     else:
-        # The odometer field is null on a shared account. The cumulative
-        # ride log is still the life-to-date figure for a car whose first
-        # record is not older than its activation date — but that is a
-        # per-vehicle judgement, so the board labels it honestly.
+        # No odometer field at all: the cumulative ride log is all there
+        # is, so say so instead of implying it is the instrument reading.
         rows.insert(0, "累计骑行")
-    return _card("里程", f"{_fmt(allm.get('km'), ' km', 1)}", rows, ACCENT_2)
+        headline = _fmt(allm.get("km"), " km", 1)
+    return _card("里程", headline, rows, ACCENT_2)
 
 
 def _location_card(snap: Dict[str, Any]) -> str:

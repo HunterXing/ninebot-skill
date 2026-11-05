@@ -143,16 +143,35 @@ class TestBoard(unittest.TestCase):
     def test_odometer_label_is_honest(self):
         body = body_of(snapshot())
         self.assertIn("累计骑行", body)
-        self.assertNotIn("累计（仪表盘）", body)
+        self.assertNotIn("里程表", body)
 
     def test_odometer_flag_is_read_from_the_mileage_top_level(self):
         """It lives beside "all", not inside it — a wrong nesting level
         silently always reports "no odometer"."""
         snap = snapshot()
         snap["mileage"]["odometerAvailable"] = True
+        snap["mileage"]["odometerKm"] = 15.4
         body = body_of(snap)
-        self.assertIn("累计（仪表盘）", body)
+        self.assertIn("里程表", body)
         self.assertNotIn("累计骑行", body)
+
+    def test_native_odometer_and_cumulative_are_different_calibers(self):
+        """Two numbers, two labels. When they differ, BOTH must show."""
+        snap = snapshot()
+        snap["mileage"]["odometerAvailable"] = True
+        snap["mileage"]["odometerKm"] = 128.0
+        snap["mileage"]["cumulativeDiffersFromOdo"] = True
+        body = body_of(snap)
+        self.assertIn("128.0 km", body)
+        self.assertIn("累计骑行 15.4 km", body)
+
+    def test_odometer_flag_without_a_value_prints_a_dash(self):
+        """A flag with no number must never render 0 km."""
+        snap = snapshot()
+        snap["mileage"]["odometerAvailable"] = True
+        body = body_of(snap)
+        self.assertIn("里程表", body)
+        self.assertNotIn("0.0 km", body)
 
     def test_week_bars_summarise_the_days(self):
         snap = snapshot()

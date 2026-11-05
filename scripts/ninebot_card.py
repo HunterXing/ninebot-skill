@@ -257,6 +257,12 @@ def tpl_ride(snap: Dict[str, Any]) -> List[str]:
         since = str(total.get("since") or "")
         label = f"自 {since[:4]}-{since[4:6]}" if len(since) == 6 else ""
         lines.append(f"累计 {float(total.get('km') or 0):.1f} km" + (f"（{label}）" if label else ""))
+    # The native odometer is a different caliber from the cumulative
+    # above: the cumulative only covers the rides this account can see.
+    odo = mileage.get("odometerKm")
+    if mileage.get("odometerAvailable"):
+        lines.append(f"里程表 {float(odo):.1f} km（整车总里程）"
+                     if odo is not None else "里程表 —（整车总里程）")
     secs = int(travel.get("duration") or 0)
     if secs:
         lines.append(f"本月骑行时长 {secs // 60} 分 {secs % 60} 秒"

@@ -205,8 +205,15 @@ def render(status: Dict[str, Any],
             label = f"自 {since[:4]}-{since[4:6]}" if len(since) == 6 else ""
             cells2.append(f"累计 {total.get('km', 0):.1f} km" + (f"（{label}）" if label else ""))
         lines.append("　｜　".join(cells2))
-        if not mileage.get("odometerAvailable", True):
-            lines.append("　整车总里程（ODO）：共享账号不提供，接口返回空")
+        # The native odometer (`vehicle-info`) is the whole-vehicle figure.
+        # The cumulative above only covers the rides THIS account can see,
+        # so they are two calibers and both get their own label.
+        odo = mileage.get("odometerKm")
+        if mileage.get("odometerAvailable"):
+            lines.append(f"　**里程表 {float(odo):.1f} km**（整车总里程）"
+                         if odo is not None else "　**里程表 —**（整车总里程）")
+        else:
+            lines.append("　整车总里程（ODO）：接口未返回")
         lines.append("")
 
     # ---- state ----------------------------------------------------------
@@ -397,11 +404,30 @@ def collect_snapshot() -> Dict[str, Any]:
             cfg, token, sn, travel.get("month") or "")
     except Exception:  # noqa: BLE001 - mileage is a bonus, not a dependency
         mileage = {}
-    # The odometer flag has to reflect the account's real access, not a
-    # constant: `total_mileage` is null on a shared account, so the board
-    # says "累计骑行" instead of "仪表盘".
+    # The native odometer comes from `vehicle-info`, NOT from `my-vehicle`:
+    # on a shared (family) account the `my-vehicle` record's
+    # `total_mileage` is null, while `vehicle-info` reports the real
+    # whole-vehicle odometer. Ask for it, and let the answer decide the
+    # label — the render layer must not second-guess it.
+    try:
+        vehicle_info = nq.account_vehicle_info(cfg, token, sn)
+    except Exception:  # noqa: BLE001 - the odometer is a bonus
+        vehicle_info = {}
     if isinstance(mileage, dict):
-        mileage["odometerAvailable"] = dev.get("totalMileage") is not None
+        odometer_km = vehicle_info.get("odometerKm")
+        mileage["odometerKm"] = odometer_km
+        mileage["odometerAvailable"] = odometer_km is not None
+        # Whether the account-visible cumulative differs from the native
+        # odometer. Decided HERE, not in the renderer: the renderer only
+        # picks labels, it never re-derives a caliber.
+        all_block = mileage.get("all") or {}
+        cumulative_km = all_block.get("km")
+        mileage["cumulativeDiffersFromOdo"] = bool(
+            odometer_km is not None
+            and cumulative_km is not None
+            and abs(float(cumulative_km) - float(odometer_km)) > 0.05)
+        mileage["identificationNumber"] = vehicle_info.get("identificationNumber")
+        mileage["latestTrail"] = vehicle_info.get("latestTrail")
 
     geo = None
     try:

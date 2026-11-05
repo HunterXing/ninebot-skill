@@ -536,6 +536,74 @@ def account_device_info(cfg: Dict[str, Any], access_token: str, sn: str) -> Dict
     }
 
 
+def account_vehicle_info(cfg: Dict[str, Any], access_token: str,
+                         sn: str) -> Dict[str, Any]:
+    """Vehicle profile from `vehicle-info`: the native odometer and friends.
+
+    Separate from `account_device_info` on purpose. That one reads
+    `desktop-component` (live state); this one reads `vehicle-info`
+    (profile + odometer), and the two endpoints have different field
+    sets — mixing them silently drops half the data.
+
+    `totalMileage` here is the whole-vehicle odometer in km, the same
+    number the app shows on its device-info page. The `my-vehicle`
+    record carries a `total_mileage` key too, but on a shared (family)
+    account that one is null while this endpoint fills it in — so the
+    odometer is available even to a family sub-account.
+
+    `odometerKm` is deliberately the SAME number as `totalMileage`, only
+    typed as float. The consumer decides how to label it; this layer only
+    reports what the gateway said.
+    """
+    creds = _account_env(cfg)
+    env = client.vehicle_info(creds["token"], creds["uid"], sn)
+    code = env.get("code")
+    if code not in (0, 1, "0", "1", None):
+        raise RuntimeError(
+            "九号接口报错: %s (code: %s)" % (env.get("desc") or "unknown", code))
+
+    payload = env.get("data")
+    data: Dict[str, Any] = {}
+    if isinstance(payload, dict):
+        data = payload
+    elif isinstance(payload, list) and payload and isinstance(payload[0], dict):
+        data = payload[0]
+
+    def pick(*keys: str) -> Any:
+        for k in keys:
+            if k in data and data[k] is not None:
+                return data[k]
+        return None
+
+    raw_odo = pick("total_mileage")
+    odometer_km: Optional[float] = None
+    if isinstance(raw_odo, (int, float)) and not isinstance(raw_odo, bool):
+        odometer_km = float(raw_odo)
+
+    trail = pick("latest_trail")
+    latest_trail: Optional[Dict[str, Any]] = None
+    if isinstance(trail, dict):
+        latest_trail = {
+            "startTime": trail.get("start_time"),
+            "endTime": trail.get("end_time"),
+            # The gateway reports this ride in METRES.
+            "mileageMeters": trail.get("mileage"),
+            "durationSeconds": trail.get("time"),
+            "speedKmh": trail.get("speed_kmh"),
+        }
+
+    return {
+        "totalMileage": raw_odo,
+        "odometerKm": odometer_km,
+        "identificationNumber": pick("identification_number"),
+        "lastUpdateTime": pick("lastupdatetime"),
+        "batteryType": pick("battery_type"),
+        "iovType": pick("iov_type"),
+        "vehicleName": pick("vehicle_name", "ble_name"),
+        "latestTrail": latest_trail,
+    }
+
+
 # --------------------------------------------------------------------------
 # Backend selection
 # --------------------------------------------------------------------------

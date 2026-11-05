@@ -868,6 +868,73 @@ class ReportRulesTest(unittest.TestCase):
         self.assertTrue(any("雨衣" in t for t in tips))
 
 
+class VehicleInfoTest(unittest.TestCase):
+    """`vehicle-info` — the endpoint behind the app's device-info page.
+
+    Two things are easy to get wrong here and both fail silently:
+    the serial parameter name, and the difference between this
+    endpoint's odometer and the one on the vehicle-list record.
+    """
+
+    def setUp(self):
+        self.sent = []
+        self.saved = client._post_encrypted
+
+        def fake(url, extra_params, access_token, uid, **kwargs):
+            self.sent.append((url, list(extra_params), kwargs))
+            return {"code": 1, "desc": "成功", "data": {
+                "total_mileage": 16,
+                "identification_number": "TESTVIN0000000001",
+                "lastupdatetime": "1793871958",
+                "battery_type": "2",
+                "iov_type": 2,
+                "vehicle_name": "九号电自Fz1 60",
+                "latest_trail": {"start_time": 1, "end_time": 2,
+                                 "mileage": 400, "time": 131,
+                                 "speed_kmh": "25"},
+            }}
+
+        client._post_encrypted = fake
+        self.addCleanup(lambda: setattr(client, "_post_encrypted", self.saved))
+
+    def test_the_serial_rides_in_wnumber(self):
+        """`sn` / `sn_str` / `sn_seq` are all rejected by the gateway's
+        inner-body validation with 340000 — only `wnumber` gets code=1."""
+        client.vehicle_info("tok", "uid", "TESTSN0000000001")
+        url, params, _ = self.sent[0]
+        self.assertIn("/vehicle/vehicle/vehicle-info", url)
+        self.assertEqual([("wnumber", "TESTSN0000000001")], params)
+
+    def test_business_type_is_looked_up_per_endpoint(self):
+        client.vehicle_info("tok", "uid", "SN")
+        _, _, kwargs = self.sent[0]
+        self.assertEqual("2", kwargs.get("business_type"))
+
+    def test_the_odometer_is_projected_as_a_float(self):
+        import ninebot_query as nq
+        info = nq.account_vehicle_info({}, "tok", "SN")
+        self.assertEqual(16, info["totalMileage"])
+        self.assertEqual(16.0, info["odometerKm"])
+
+    def test_a_missing_odometer_is_none_not_zero(self):
+        import ninebot_query as nq
+
+        def empty(url, extra_params, access_token, uid, **kwargs):
+            return {"code": 1, "desc": "成功", "data": {"ble_name": "X"}}
+
+        client._post_encrypted = empty
+        info = nq.account_vehicle_info({}, "tok", "SN")
+        self.assertIsNone(info["odometerKm"])
+
+    def test_the_latest_ride_distance_is_in_metres(self):
+        import ninebot_query as nq
+        info = nq.account_vehicle_info({}, "tok", "SN")
+        self.assertEqual(400, info["latestTrail"]["mileageMeters"])
+        # The gateway sends this one as a string; the projection keeps it
+        # verbatim rather than inventing a number.
+        self.assertEqual("25", info["latestTrail"]["speedKmh"])
+
+
 class MileageTest(unittest.TestCase):
     """Mileage aggregation and the range-labels."""
 
@@ -915,6 +982,32 @@ class MileageTest(unittest.TestCase):
         self.assertIn("8.6 km", out)
         # The missing odometer must be stated, not quietly omitted.
         self.assertIn("整车总里程", out)
+
+    def test_native_odometer_is_labelled_as_the_instrument_reading(self):
+        """`vehicle-info` gives the whole-vehicle odometer; it is not the
+        same caliber as the account-visible cumulative, so it gets its own
+        label rather than replacing "累计"."""
+        mileage = {
+            "day": {"km": 0.0, "times": 0},
+            "week": {"km": 2.4, "times": 7},
+            "month": {"km": 8.6, "times": 10},
+            "year": {"km": 15.4, "times": 13},
+            "all": {"km": 15.4, "times": 13, "since": "202610"},
+            "odometerKm": 128.0,
+            "odometerAvailable": True,
+        }
+        out = self.rep.render({"device_name": "X", "battery": 50}, mileage=mileage)
+        self.assertIn("里程表 128.0 km", out)
+        self.assertIn("累计 15.4 km", out)
+        self.assertNotIn("整车总里程（ODO）：接口未返回", out)
+
+    def test_missing_odometer_says_so(self):
+        mileage = {
+            "all": {"km": 15.4, "times": 13, "since": "202610"},
+            "odometerAvailable": False,
+        }
+        out = self.rep.render({"device_name": "X", "battery": 50}, mileage=mileage)
+        self.assertIn("整车总里程（ODO）：接口未返回", out)
 
     def test_range_values_are_named_not_raw(self):
         # "AI 23.1 km" told the reader nothing about what it measured.
