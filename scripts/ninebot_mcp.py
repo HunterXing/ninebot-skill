@@ -178,6 +178,18 @@ def tool_vehicle_status(args: Dict[str, Any]) -> Dict[str, Any]:
                     out[key_name] = batt[key_name]
         except Exception:  # noqa: BLE001 - status must not fail on battery
             pass
+        # The native odometer lives on `vehicle-info`, not on the status
+        # endpoint — and NOT on the vehicle-list record, whose
+        # `total_mileage` is null for a shared account. Missing stays
+        # missing: a null odometer is not "0 km".
+        try:
+            vinfo = nq.account_vehicle_info(cfg, _session()["access_token"], sn)
+            if vinfo.get("odometerKm") is not None:
+                out["totalMileage"] = vinfo["odometerKm"]
+            if vinfo.get("identificationNumber"):
+                out["identificationNumber"] = vinfo["identificationNumber"]
+        except Exception:  # noqa: BLE001 - status must not fail on profile
+            pass
     return out
 
 
