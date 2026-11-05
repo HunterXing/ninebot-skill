@@ -85,10 +85,19 @@ Base URL 按端点分家：`ebike.ninebot.com`（电自）· `steeldust.ninebot.
 | 密码登录 | POST | `/v6/user/login` | `device` `areaCode` `username` `password` |
 | 发短信码 | POST | `/v4/code/phone` | `rawTemplate=login` `areaCode` `account` |
 | 验证码登录 | POST | `/v6/user/phoneCodeLogin` | `device` `areaCode` `phone` `code` `region` |
-| 刷新 token | POST | `/v3/user/refresh` | `device` `accessToken` `refreshToken` |
+| 刷新 token | POST | `/v3/user/refresh` | `device` `access_token` `refresh_token` |
 | 校验 token | POST | `/v5/user` | {} |
 
 Base URL：`https://api-passport-bj.ninebot.com`
+
+⚠️ **刷新 token 的参数名是 snake_case**（`access_token` / `refresh_token`），
+**不是** camelCase —— 用 camelCase 实测回 `resultCode=90002 args missing`，
+用 snake_case 才回 `90000 success`。这一条与同表其它端点（多数 camelCase）
+相反，别照抄。
+
+⚠️ **刷新不会作废旧 access_token**：实测刷新后旧 token 仍能调
+`vehicle-info`（code=1），旧 `refresh_token` 也能再次刷新成功。
+所以刷新是**增量**的，不必抢在旧 token 失效前执行。
 
 ### 签名算法（Passport）
 
