@@ -276,6 +276,8 @@ VEHICLE_TYPE_TRAVEL = "112"
 _BUSINESS_TYPE_BY_PATH = {
     "/vehicle/binding/my-vehicle": "1",
     "/vehicle/vehicle/desktop-component": "2",
+    "/vehicle/vehicle/vehicle-info": "2",
+    "/vehicle/vehicle/vehicle-status": "2",
     "/v6/vehicle/battery-info": "2",
     "/app-api/travel/v6/travel-list2": "2",
     "/app-api/travel/v6/travel-info": "2",
@@ -395,6 +397,52 @@ def desktop_component(access_token: str, uid: str, sn: str) -> Dict[str, Any]:
     """
     url = EBIKE_HOST + "/vehicle/vehicle/desktop-component"
     return _post_encrypted(url, [("sn_str", sn)], access_token, uid)
+
+
+def vehicle_info(access_token: str, uid: str, sn: str) -> Dict[str, Any]:
+    """Vehicle profile: the native odometer, VIN, last ride, battery class.
+
+    The serial rides in `wnumber` here. That parameter name is NOT
+    interchangeable with `sn` / `sn_str` / `sn_seq`: those variants are
+    rejected at the inner-body layer with `340000`, while `wnumber` gets a
+    `code=1` answer.
+
+    `total_mileage` on this endpoint is the whole-vehicle odometer in km —
+    the same number the app shows on its device-info page. The
+    `my-vehicle` record also carries a `total_mileage` key, but on a
+    shared (family) account that one is null; this endpoint fills it in
+    anyway. Do not treat the two as interchangeable.
+
+    Both the ebike and the motor gateway answer; the ebike one is asked
+    first because an Fz-series e-bike is an ebike-class vehicle.
+    """
+    last: Dict[str, Any] = {}
+    for host in (EBIKE_HOST, MOTOR_HOST):
+        url = host + "/vehicle/vehicle/vehicle-info"
+        env = _post_encrypted(url, [("wnumber", sn)], access_token, uid,
+                               business_type=business_type_for(url))
+        last = env
+        if env.get("code") in (0, 1, "0", "1"):
+            return env
+    return last
+
+
+def vehicle_status(access_token: str, uid: str, sn: str) -> Dict[str, Any]:
+    """Link-quality and lock telemetry: GSM/GNSS signal, lock, speed.
+
+    Same `wnumber` parameter convention as `vehicle_info`. The payload is
+    small — it carries the radio signal strengths the cloud box reports,
+    not the vehicle's energy state.
+    """
+    last: Dict[str, Any] = {}
+    for host in (EBIKE_HOST, MOTOR_HOST):
+        url = host + "/vehicle/vehicle/vehicle-status"
+        env = _post_encrypted(url, [("wnumber", sn)], access_token, uid,
+                               business_type=business_type_for(url))
+        last = env
+        if env.get("code") in (0, 1, "0", "1"):
+            return env
+    return last
 
 
 def battery_info(access_token: str, uid: str, sn: str) -> Dict[str, Any]:
