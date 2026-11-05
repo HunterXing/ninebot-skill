@@ -47,23 +47,38 @@ Base URL：`https://cn-cbu-gateway.ninebot.com`
 
 ## 二、账号通道（自有账号，不需内测名额）
 
-Base URL：`https://cn-cbu-gateway.ninebot.com`
+**这一节描述的是业务通道（NET 加密信封），不是官方 Device Service。**
+两条通道的字段名不同（官方 camelCase / 账号 snake_case），别混。
 
-| 用途 | 方法 | 路径 |
-|---|---|---|
-| 设备列表 | POST | `/app-api/inner/device/ai/get-device-list` |
-| 车辆动态 | POST | `/app-api/inner/device/ai/get-device-dynamic-info` |
+### 业务通道（NET 加密信封）
 
-请求体：
+Base URL 按端点分家：`ebike.ninebot.com`（电自）· `steeldust.ninebot.com`（电摩）
+· `cn-cbu-gateway.ninebot.com`（骑行记录）· `api-jhcx-v6-bj.ninebot.com`（账号）
 
-```json
-{"access_token": "<token>", "lang": "zh"}
-{"sn": "<设备SN>", "access_token": "<token>"}
-```
+| 用途 | 路径 | 序列号参数名 | Business-Type |
+|---|---|---|---|
+| 车辆列表 | `/vehicle/binding/my-vehicle`（两网关合并） | — | 1 |
+| 车辆状态 | `/vehicle/vehicle/desktop-component` | **`sn_str`** | 2 |
+| **车辆档案（含原生总里程）** | **`/vehicle/vehicle/vehicle-info`** | **`wnumber`** | 2 |
+| **链路状态（GSM/GNSS 信号）** | **`/vehicle/vehicle/vehicle-status`** | **`wnumber`** | 2 |
+| 电池 | `/v6/vehicle/battery-info` | `wnumber` | 2 |
+| 骑行记录 | `/app-api/travel/v6/travel-list2` | `wnumber` | 2 |
 
-响应同官方格式（`code` / `desc` / `data`）。
+⚠️ **序列号参数名按端点各不一样，没有统一的那个**：
+`desktop-component` 用 `sn_str`，`vehicle-info` / `battery-info` / travel 用 `wnumber`。
+用错名字的后果分两种，别混：
+- 参数名错 → `340000`（内层体形态被拒）
+- 路由不存在 → `404 request not found!`
 
-### 认证链（Passport）
+⚠️ **`vehicle-info` 的 `total_mileage` 是整车原生里程**（即 APP 设备信息页显示的总里程），
+**共享（家庭）账号照样能读到**。而 `my-vehicle` 记录里那个同名字段在共享账号下恒为
+`null` —— 两者不是一回事，别拿 `my-vehicle` 的空值去断言「拿不到 ODO」。
+
+`vehicle-info` 响应的其余字段：`identification_number`（车架号/VIN）、
+`lastupdatetime`、`battery_type`、`iov_type`、`vehicle_name`、
+`latest_trail`（最近一次骑行，其中 `mileage` 单位是**米**）。
+
+### Passport 认证链
 
 | 用途 | 方法 | 路径 | 参数 |
 |---|---|---|---|

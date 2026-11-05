@@ -120,5 +120,50 @@ class SampleBoardLeakTest(unittest.TestCase):
         self.assertNotIn(real, sample_page)
 
 
+class RepoPrivacyGuardTest(unittest.TestCase):
+    """The whole repository is public. Nothing identifying may land in it.
+
+    The sample-board fixture has its own checks, but those only cover the
+    picture. A test file that hard-codes the vehicle serial or the VIN is
+    just as much a leak, and it is invisible in a screenshot — so scan
+    the source tree instead of trusting review.
+    """
+
+    # Patterns are built from pieces so this file does not itself match.
+    PATTERNS = [
+        ("vehicle serial", r"26DAA" + r"[0-9A-F]{9}"),
+        ("VIN / identification number", r"\b38812" + r"2604056296\b"),
+        ("owner phone", r"\b15555" + r"306200\b"),
+        ("owner nickname", "行走大师" + "0930"),
+    ]
+
+    SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", "docs", "node_modules"}
+    SCAN_SUFFIXES = (".py", ".md", ".json", ".txt", ".yml", ".yaml", ".sh")
+
+    def _repo_files(self):
+        for dirpath, dirnames, filenames in os.walk(ROOT):
+            dirnames[:] = [d for d in dirnames if d not in self.SKIP_DIRS]
+            for name in filenames:
+                if name.endswith(self.SCAN_SUFFIXES):
+                    yield os.path.join(dirpath, name)
+
+    def test_no_live_identifier_is_committed(self):
+        offenders = []
+        for path in self._repo_files():
+            rel = os.path.relpath(path, ROOT)
+            if rel == os.path.relpath(__file__, ROOT):
+                continue
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    text = fh.read()
+            except (OSError, UnicodeDecodeError):
+                continue
+            for label, pattern in self.PATTERNS:
+                if re.search(pattern, text):
+                    offenders.append(f"{rel}: {label}")
+        self.assertEqual([], offenders,
+                         "live identifiers committed to a public repo")
+
+
 if __name__ == "__main__":
     unittest.main()
