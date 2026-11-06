@@ -108,8 +108,8 @@ bash ~/.hermes/scripts/ninebot_status_card.sh --refresh   # 先强制刷新快�
 
 ```bash
 python3 - <<'PY'
-import json
-s = json.load(open('~/.hermes/state/ninebot/snapshot.json'))
+import json, os
+s = json.load(open(os.path.expanduser('~/.hermes/state/ninebot/snapshot.json')))
 print(s['status']['voltage'], s['battery']['cycles'], s['mileage']['week'])
 PY
 # 或直接 grep 扁平参数：
